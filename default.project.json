@@ -9,6 +9,12 @@
       },
       "Modules": {
         "$className": "Folder",
+        "Configs": {
+          "$path": "src/shared/Modules/Configs"
+        },
+        "DevilFruits": {
+          "$path": "src/shared/Modules/DevilFruits"
+        },
         "Inventory": {
           "$path": "src/shared/Modules/Inventory"
         }
@@ -16,8 +22,11 @@
     },
 
     "ServerScriptService": {
+      "Modules": {
+        "$path": "src/server/Modules"
+      },
       "Server": {
-        "$path": "src/server"
+        "$path": "src/server/Server"
       }
     },
 

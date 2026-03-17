@@ -25,6 +25,8 @@ local inventoryRoot = localPlayer:WaitForChild(Constants.RootFolderName)
 
 local remotesFolder = ReplicatedStorage:WaitForChild(Constants.RemotesFolderName)
 local commandRemote: RemoteEvent = remotesFolder:WaitForChild(Constants.CommandRemoteName)
+local gameRemotes = ReplicatedStorage:WaitForChild("Remotes")
+local devilFruitConsumeRequestRemote: RemoteEvent = gameRemotes:WaitForChild("DevilFruitConsumeRequest")
 
 local inventory: InventorySnapshot = {}
 local isOpen = false
@@ -248,8 +250,12 @@ local function readInventoryMirror(): InventorySnapshot
 					local equipped = itemFolder:FindFirstChild(Constants.ValueNames.Equipped)
 					local itemType = itemFolder:FindFirstChild(Constants.ValueNames.ItemType)
 					local itemId = itemFolder:FindFirstChild(Constants.ValueNames.ItemId)
-					local resolvedItemType = if itemType and itemType:IsA("StringValue") then itemType.Value else typeFolder.Name
-					local resolvedItemId = if itemId and itemId:IsA("StringValue") then itemId.Value else itemFolder.Name
+					local resolvedItemType = if itemType and itemType:IsA("StringValue")
+						then itemType.Value
+						else typeFolder.Name
+					local resolvedItemId = if itemId and itemId:IsA("StringValue")
+						then itemId.Value
+						else itemFolder.Name
 					local resolvedQuantity = if quantity and quantity:IsA("NumberValue") then quantity.Value else 0
 					local resolvedEquipped = if equipped and equipped:IsA("BoolValue") then equipped.Value else false
 
@@ -389,6 +395,7 @@ end
 local function createItemCard(itemState: ItemState, order: number)
 	local definition = Registry.GetItemType(itemState.ItemType)
 	local typeColor = getTypeColor(itemState.ItemType)
+	local isDevilFruit = itemState.ItemType == "DevilFruit"
 
 	local card = Instance.new("Frame")
 	card.Name = itemState.ItemId
@@ -476,16 +483,44 @@ local function createItemCard(itemState: ItemState, order: number)
 	badge.BackgroundColor3 = itemState.Equipped and THEME.Success or typeColor
 	badge.BorderSizePixel = 0
 	badge.Font = Enum.Font.GothamBold
-	badge.Text = itemState.Equipped and "Equipped" or "Stored"
+	badge.Text = itemState.Equipped and "Equipped" or ""
 	badge.TextColor3 = THEME.Text
 	badge.TextSize = 13
-	badge.Parent = card
+	if itemState.Equipped then
+		badge.Parent = card
 
-	local badgeCorner = Instance.new("UICorner")
-	badgeCorner.CornerRadius = UDim.new(1, 0)
-	badgeCorner.Parent = badge
+		local badgeCorner = Instance.new("UICorner")
+		badgeCorner.CornerRadius = UDim.new(1, 0)
+		badgeCorner.Parent = badge
+	end
 
-	if definition and definition.Equippable then
+	if isDevilFruit then
+		local actionButton = Instance.new("TextButton")
+		actionButton.AnchorPoint = Vector2.new(1, 1)
+		actionButton.Position = UDim2.new(1, -16, 1, -14)
+		actionButton.Size = UDim2.fromOffset(110, 32)
+		actionButton.AutoButtonColor = false
+		actionButton.BackgroundColor3 = typeColor
+		actionButton.BorderSizePixel = 0
+		actionButton.Font = Enum.Font.GothamBold
+		actionButton.Text = "Eat"
+		actionButton.TextColor3 = THEME.Text
+		actionButton.TextSize = 14
+		actionButton.Parent = card
+
+		local actionCorner = Instance.new("UICorner")
+		actionCorner.CornerRadius = UDim.new(0, 10)
+		actionCorner.Parent = actionButton
+
+		local actionStroke = Instance.new("UIStroke")
+		actionStroke.Color = THEME.AccentSoft
+		actionStroke.Transparency = 0.2
+		actionStroke.Parent = actionButton
+
+		actionButton.MouseButton1Click:Connect(function()
+			devilFruitConsumeRequestRemote:FireServer(itemState.ItemId)
+		end)
+	elseif definition and definition.Equippable then
 		local actionButton = Instance.new("TextButton")
 		actionButton.AnchorPoint = Vector2.new(1, 1)
 		actionButton.Position = UDim2.new(1, -16, 1, -14)
