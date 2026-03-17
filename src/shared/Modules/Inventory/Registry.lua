@@ -60,8 +60,14 @@ function Registry.IsRegistered(itemType: string): boolean
 end
 
 Registry.RegisterItemType({
-	Name = ItemTypes.Crewmates,
+	Name = ItemTypes.Chest,
 	Stackable = true,
+	Equippable = false,
+})
+
+Registry.RegisterItemType({
+	Name = ItemTypes.Crewmates,
+	Stackable = false,
 	Equippable = true,
 	MaxEquipped = 1,
 })

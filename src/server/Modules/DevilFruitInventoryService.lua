@@ -11,6 +11,7 @@ local Inventory = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild
 local DevilFruitConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Configs"):WaitForChild("DevilFruits"))
 local InventoryService = require(ServerScriptService:WaitForChild("Modules"):WaitForChild("InventoryService"))
 local DevilFruitService = require(ServerScriptService:WaitForChild("Modules"):WaitForChild("DevilFruitService"))
+local HotbarService = require(ServerScriptService:WaitForChild("Modules"):WaitForChild("HotbarService"))
 
 local ItemTypes = Inventory.ItemTypes
 
@@ -195,6 +196,8 @@ local function handleConsumeResponse(player: Player, accepted, fruitKey)
 		)
 		return
 	end
+
+	HotbarService.ClearItem(player, ItemTypes.DevilFruit, fruitKey)
 
 	local equipped = DevilFruitService.SetEquippedFruit(player, fruitKey)
 	if not equipped then

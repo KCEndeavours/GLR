@@ -5,11 +5,16 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local TextChatService = game:GetService("TextChatService")
 
 local DevilFruitConfig = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Configs"):WaitForChild("DevilFruits"))
+local Economy = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Configs"):WaitForChild("GrandLineRushEconomy"))
+local CrewCatalog = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Configs"):WaitForChild("GrandLineRushCrewCatalog"))
 local Inventory = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Inventory"))
 local InventoryService = require(ServerScriptService:WaitForChild("Modules"):WaitForChild("InventoryService"))
 local DevilFruitInventoryService =
 	require(ServerScriptService:WaitForChild("Modules"):WaitForChild("DevilFruitInventoryService"))
 local DevilFruitService = require(ServerScriptService:WaitForChild("Modules"):WaitForChild("DevilFruitService"))
+local GrandLineRushChestService =
+	require(ServerScriptService:WaitForChild("Modules"):WaitForChild("GrandLineRushChestService"))
+local CrewService = require(ServerScriptService:WaitForChild("Modules"):WaitForChild("CrewService"))
 
 local ItemTypes = Inventory.ItemTypes
 
@@ -55,6 +60,20 @@ local function getFruitIdentifier(words: { string }): (string?, number)
 	end
 
 	return joinWords(words, 2, fruitLastIndex), math.max(1, math.floor(amount or 1))
+end
+
+local function getIdentifierAndAmount(words: { string }, usageStartIndex: number): (string?, number)
+	if #words < usageStartIndex then
+		return nil, 1
+	end
+
+	local amount = tonumber(words[#words])
+	local lastIndex = if amount ~= nil then #words - 1 else #words
+	if lastIndex < usageStartIndex then
+		return nil, 1
+	end
+
+	return joinWords(words, usageStartIndex, lastIndex), math.max(1, math.floor(amount or 1))
 end
 
 local function sendSystemMessage(_player: Player, _message: string)
@@ -147,6 +166,46 @@ local function handleUnequipFruit(player: Player)
 	sendSystemMessage(player, "Cleared equipped Devil Fruit.")
 end
 
+local function handleChestGrant(player: Player, words: { string })
+	local chestTier, amount = getIdentifierAndAmount(words, 2)
+	if not chestTier then
+		sendSystemMessage(player, "Usage: /chest <wooden|iron|gold|legendary> [amount]")
+		return
+	end
+
+	local ok = GrandLineRushChestService.GrantChest(player, chestTier, amount)
+	if not ok then
+		sendSystemMessage(player, string.format("Failed to grant chest tier '%s'.", chestTier))
+	end
+end
+
+local function handleCrewGrant(player: Player, words: { string })
+	local crewIdentifier, amount = getIdentifierAndAmount(words, 2)
+	if not crewIdentifier then
+		sendSystemMessage(player, "Usage: /crew <rarity|crew name> [amount]")
+		return
+	end
+
+	local normalizedRarity = nil
+	for _, rarity in ipairs(Economy.Crew.RarityOrder) do
+		if string.lower(rarity) == crewIdentifier then
+			normalizedRarity = rarity
+			break
+		end
+	end
+
+	local crewName = crewIdentifier
+	local rarity = "Common"
+	if normalizedRarity then
+		crewName = CrewCatalog.GetRandomNameForRarity(normalizedRarity)
+		rarity = normalizedRarity
+	end
+
+	for _ = 1, amount do
+		CrewService.GrantCrew(player, crewName, rarity, "AdminCommand")
+	end
+end
+
 local function onCommandMessage(player: Player, message: string)
 	if not canUseAdminCommands(player) then
 		return
@@ -179,6 +238,16 @@ local function onCommandMessage(player: Player, message: string)
 
 	if commandName == "/unequipfruit" then
 		handleUnequipFruit(player)
+		return
+	end
+
+	if commandName == "/chest" then
+		handleChestGrant(player, words)
+		return
+	end
+
+	if commandName == "/crew" then
+		handleCrewGrant(player, words)
 	end
 end
 
@@ -210,3 +279,5 @@ createChatCommand("/fruit")
 createChatCommand("/removefruit")
 createChatCommand("/clearfruitinventory")
 createChatCommand("/unequipfruit")
+createChatCommand("/chest")
+createChatCommand("/crew")

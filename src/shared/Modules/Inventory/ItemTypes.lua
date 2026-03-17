@@ -1,5 +1,6 @@
 local ItemTypes = {}
 
+ItemTypes.Chest = "Chest"
 ItemTypes.Crewmates = "Crewmates"
 ItemTypes.DevilFruit = "DevilFruit"
 ItemTypes.Material = "Material"
