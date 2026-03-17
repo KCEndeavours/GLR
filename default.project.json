@@ -5,7 +5,13 @@
 
     "ReplicatedStorage": {
       "Shared": {
-        "$path": "src/shared"
+        "$path": "src/shared/Shared"
+      },
+      "Modules": {
+        "$className": "Folder",
+        "Inventory": {
+          "$path": "src/shared/Modules/Inventory"
+        }
       }
     },
 
