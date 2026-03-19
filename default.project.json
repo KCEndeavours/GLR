@@ -4,8 +4,8 @@
     "$className": "DataModel",
 
     "ReplicatedStorage": {
-      "Shared": {
-        "$path": "src/shared/Shared"
+      "Packages": {
+        "$path": "Packages"
       },
       "Modules": {
         "$className": "Folder",
@@ -15,9 +15,15 @@
         "DevilFruits": {
           "$path": "src/shared/Modules/DevilFruits"
         },
+        "GrandLineRushChestVisuals": {
+          "$path": "src/shared/Modules/GrandLineRushChestVisuals.lua"
+        },
         "Inventory": {
           "$path": "src/shared/Modules/Inventory"
         }
+      },
+      "UI": {
+        "$path": "src/shared/UI"
       }
     },
 

@@ -17,8 +17,10 @@ local GrandLineRushChestService =
 local CrewService = require(ServerScriptService:WaitForChild("Modules"):WaitForChild("CrewService"))
 
 local ItemTypes = Inventory.ItemTypes
-
 local COMMAND_PREFIX = "/"
+
+local fruitAliases = {}
+local chestTierAliases = {}
 
 local function canUseAdminCommands(player: Player): boolean
 	if RunService:IsStudio() then
@@ -28,11 +30,15 @@ local function canUseAdminCommands(player: Player): boolean
 	return player.UserId == game.CreatorId
 end
 
+local function normalizeText(text: string?): string
+	return tostring(text or ""):lower():match("^%s*(.-)%s*$") or ""
+end
+
 local function splitWords(message: string): { string }
 	local words = {}
 
 	for word in string.gmatch(message, "%S+") do
-		table.insert(words, word)
+		words[#words + 1] = word
 	end
 
 	return words
@@ -42,24 +48,10 @@ local function joinWords(words: { string }, firstIndex: number, lastIndex: numbe
 	local parts = {}
 
 	for index = firstIndex, lastIndex do
-		table.insert(parts, words[index])
+		parts[#parts + 1] = words[index]
 	end
 
 	return table.concat(parts, " ")
-end
-
-local function getFruitIdentifier(words: { string }): (string?, number)
-	if #words < 2 then
-		return nil, 1
-	end
-
-	local amount = tonumber(words[#words])
-	local fruitLastIndex = if amount ~= nil then #words - 1 else #words
-	if fruitLastIndex < 2 then
-		return nil, 1
-	end
-
-	return joinWords(words, 2, fruitLastIndex), math.max(1, math.floor(amount or 1))
 end
 
 local function getIdentifierAndAmount(words: { string }, usageStartIndex: number): (string?, number)
@@ -76,7 +68,119 @@ local function getIdentifierAndAmount(words: { string }, usageStartIndex: number
 	return joinWords(words, usageStartIndex, lastIndex), math.max(1, math.floor(amount or 1))
 end
 
+local function ensureLeaderstats(player: Player): (IntValue, IntValue)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then
+		leaderstats = Instance.new("Folder")
+		leaderstats.Name = "leaderstats"
+		leaderstats.Parent = player
+	end
+
+	local doubloons = leaderstats:FindFirstChild("Doubloons")
+	if not doubloons or not doubloons:IsA("IntValue") then
+		if doubloons then
+			doubloons:Destroy()
+		end
+
+		doubloons = Instance.new("IntValue")
+		doubloons.Name = "Doubloons"
+		doubloons.Value = Economy.Tutorial.StartingDoubloons or 0
+		doubloons.Parent = leaderstats
+	end
+
+	local totalStats = player:FindFirstChild("TotalStats")
+	if not totalStats then
+		totalStats = Instance.new("Folder")
+		totalStats.Name = "TotalStats"
+		totalStats.Parent = player
+	end
+
+	local totalDoubloons = totalStats:FindFirstChild("TotalDoubloons")
+	if not totalDoubloons or not totalDoubloons:IsA("IntValue") then
+		if totalDoubloons then
+			totalDoubloons:Destroy()
+		end
+
+		totalDoubloons = Instance.new("IntValue")
+		totalDoubloons.Name = "TotalDoubloons"
+		totalDoubloons.Value = doubloons.Value
+		totalDoubloons.Parent = totalStats
+	end
+
+	return doubloons, totalDoubloons
+end
+
+local function adjustDoubloons(player: Player, amount: number)
+	local doubloons, totalDoubloons = ensureLeaderstats(player)
+	local clampedAmount = math.floor(amount)
+	local nextBalance = math.max(0, doubloons.Value + clampedAmount)
+	local actualDelta = nextBalance - doubloons.Value
+
+	doubloons.Value = nextBalance
+	if actualDelta > 0 then
+		totalDoubloons.Value += actualDelta
+	end
+end
+
 local function sendSystemMessage(_player: Player, _message: string)
+end
+
+local function registerFruitAlias(alias: string, fruitKey: string)
+	local normalizedAlias = normalizeText(alias)
+	if normalizedAlias == "" then
+		return
+	end
+
+	fruitAliases[normalizedAlias] = fruitKey
+end
+
+local function registerChestAlias(alias: string, tierName: string)
+	local normalizedAlias = normalizeText(alias)
+	if normalizedAlias == "" then
+		return
+	end
+
+	chestTierAliases[normalizedAlias] = tierName
+end
+
+for _, fruit in ipairs(DevilFruitConfig.GetAllFruits()) do
+	registerFruitAlias(fruit.FruitKey, fruit.FruitKey)
+	registerFruitAlias(fruit.DisplayName, fruit.FruitKey)
+	registerFruitAlias(fruit.Id, fruit.FruitKey)
+
+	for _, alias in ipairs(fruit.Aliases or {}) do
+		registerFruitAlias(alias, fruit.FruitKey)
+	end
+end
+
+for tierName in pairs(Economy.Chests.Tiers or {}) do
+	registerChestAlias(tierName, tierName)
+	registerChestAlias(tierName .. " chest", tierName)
+end
+
+registerChestAlias("wood", "Wooden")
+registerChestAlias("wooden", "Wooden")
+registerChestAlias("iron", "Iron")
+registerChestAlias("gold", "Gold")
+registerChestAlias("legend", "Legendary")
+registerChestAlias("legendary", "Legendary")
+
+local function resolveFruitKey(identifier: string?): string?
+	local normalized = normalizeText(identifier)
+	if normalized == "" then
+		return nil
+	end
+
+	return fruitAliases[normalized]
+end
+
+local function resolveChestTier(identifier: string?): string?
+	local normalized = normalizeText(identifier)
+	if normalized == "" then
+		return nil
+	end
+
+	return chestTierAliases[normalized]
 end
 
 local function removeAllDevilFruits(player: Player)
@@ -91,17 +195,38 @@ local function removeAllDevilFruits(player: Player)
 	end
 end
 
+local function grantAllFruits(player: Player)
+	for _, fruit in ipairs(DevilFruitConfig.GetAllFruits()) do
+		local quantity = InventoryService.GetQuantity(player, ItemTypes.DevilFruit, fruit.FruitKey)
+		if quantity <= 0 then
+			DevilFruitInventoryService.GrantFruit(player, fruit.FruitKey, 1)
+		end
+	end
+end
+
 local function handleFruitGrant(player: Player, words: { string })
-	if words[2] == "nocd" then
-		local requestedState = words[3]
+	local argument = normalizeText(joinWords(words, 2, #words))
+	if argument == "" then
+		sendSystemMessage(player, "Usage: /fruit <fruit|all|equip|clear|nocd>")
+		return
+	end
+
+	if argument == "all" then
+		grantAllFruits(player)
+		return
+	end
+
+	local cooldownArgument = argument:match("^nocd%s*(.*)$")
+	if cooldownArgument ~= nil then
+		local normalizedCooldownArgument = normalizeText(cooldownArgument)
 		local currentState = DevilFruitService.GetCooldownBypass(player)
 		local nextState = currentState
 
-		if requestedState == nil or requestedState == "toggle" then
+		if normalizedCooldownArgument == "" or normalizedCooldownArgument == "toggle" then
 			nextState = not currentState
-		elseif requestedState == "on" or requestedState == "true" then
+		elseif normalizedCooldownArgument == "on" or normalizedCooldownArgument == "true" then
 			nextState = true
-		elseif requestedState == "off" or requestedState == "false" then
+		elseif normalizedCooldownArgument == "off" or normalizedCooldownArgument == "false" then
 			nextState = false
 		else
 			sendSystemMessage(player, "Usage: /fruit nocd [on|off|toggle]")
@@ -109,74 +234,79 @@ local function handleFruitGrant(player: Player, words: { string })
 		end
 
 		DevilFruitService.SetCooldownBypass(player, nextState)
-		sendSystemMessage(player, string.format("Devil Fruit cooldown bypass %s.", nextState and "enabled" or "disabled"))
 		return
 	end
 
-	local fruitIdentifier, amount = getFruitIdentifier(words)
+	local directEquipArgument = argument:match("^equip%s+(.+)$")
+	if directEquipArgument then
+		local fruitKey = resolveFruitKey(directEquipArgument)
+		if not fruitKey then
+			sendSystemMessage(player, "Unknown fruit.")
+			return
+		end
+
+		DevilFruitService.SetEquippedFruit(player, fruitKey)
+		return
+	end
+
+	if argument == "clear" or argument == "none" or argument == "remove" then
+		DevilFruitService.SetEquippedFruit(player, DevilFruitConfig.None)
+		return
+	end
+
+	local fruitIdentifier, amount = getIdentifierAndAmount(words, 2)
 	if not fruitIdentifier then
-		sendSystemMessage(player, "Usage: /fruit <mera|hie|fruit name> [amount] or /fruit nocd [on|off|toggle]")
+		sendSystemMessage(player, "Usage: /fruit <fruit name> [amount]")
 		return
 	end
 
-	local fruit = DevilFruitConfig.GetFruit(fruitIdentifier)
-	if not fruit then
-		sendSystemMessage(player, string.format("Unknown fruit '%s'.", fruitIdentifier))
+	local fruitKey = resolveFruitKey(fruitIdentifier)
+	if not fruitKey then
+		sendSystemMessage(player, "Unknown fruit.")
 		return
 	end
 
-	local ok, reason = DevilFruitInventoryService.GrantFruit(player, fruitIdentifier, amount)
-	if not ok then
-		sendSystemMessage(player, string.format("Failed to grant %s: %s", fruit.DisplayName, tostring(reason)))
-		return
-	end
-
-	sendSystemMessage(player, string.format("Granted %dx %s.", amount, fruit.DisplayName))
+	DevilFruitInventoryService.GrantFruit(player, fruitKey, amount)
 end
 
 local function handleFruitRemove(player: Player, words: { string })
-	local fruitIdentifier, amount = getFruitIdentifier(words)
+	local fruitIdentifier, amount = getIdentifierAndAmount(words, 2)
 	if not fruitIdentifier then
-		sendSystemMessage(player, "Usage: /removefruit <mera|hie|fruit name> [amount]")
+		sendSystemMessage(player, "Usage: /removefruit <fruit name> [amount]")
 		return
 	end
 
-	local fruit = DevilFruitConfig.GetFruit(fruitIdentifier)
-	if not fruit then
-		sendSystemMessage(player, string.format("Unknown fruit '%s'.", fruitIdentifier))
+	local fruitKey = resolveFruitKey(fruitIdentifier)
+	if not fruitKey then
+		sendSystemMessage(player, "Unknown fruit.")
 		return
 	end
 
-	local ok, reason = DevilFruitInventoryService.ConsumeFruit(player, fruitIdentifier, amount)
-	if not ok then
-		sendSystemMessage(player, string.format("Failed to remove %s: %s", fruit.DisplayName, tostring(reason)))
-		return
-	end
-
-	sendSystemMessage(player, string.format("Removed %dx %s.", amount, fruit.DisplayName))
+	DevilFruitInventoryService.ConsumeFruit(player, fruitKey, amount)
 end
 
 local function handleClearFruitInventory(player: Player)
 	removeAllDevilFruits(player)
-	sendSystemMessage(player, "Cleared all Devil Fruit items from inventory.")
 end
 
 local function handleUnequipFruit(player: Player)
 	DevilFruitService.SetEquippedFruit(player, DevilFruitConfig.None)
-	sendSystemMessage(player, "Cleared equipped Devil Fruit.")
 end
 
 local function handleChestGrant(player: Player, words: { string })
-	local chestTier, amount = getIdentifierAndAmount(words, 2)
-	if not chestTier then
+	local chestIdentifier, amount = getIdentifierAndAmount(words, 2)
+	if not chestIdentifier then
 		sendSystemMessage(player, "Usage: /chest <wooden|iron|gold|legendary> [amount]")
 		return
 	end
 
-	local ok = GrandLineRushChestService.GrantChest(player, chestTier, amount)
-	if not ok then
-		sendSystemMessage(player, string.format("Failed to grant chest tier '%s'.", chestTier))
+	local chestTier = resolveChestTier(chestIdentifier)
+	if not chestTier then
+		sendSystemMessage(player, "Unknown chest tier.")
+		return
 	end
+
+	GrandLineRushChestService.GrantChest(player, chestTier, amount)
 end
 
 local function handleCrewGrant(player: Player, words: { string })
@@ -188,7 +318,7 @@ local function handleCrewGrant(player: Player, words: { string })
 
 	local normalizedRarity = nil
 	for _, rarity in ipairs(Economy.Crew.RarityOrder) do
-		if string.lower(rarity) == crewIdentifier then
+		if string.lower(rarity) == normalizeText(crewIdentifier) then
 			normalizedRarity = rarity
 			break
 		end
@@ -206,6 +336,35 @@ local function handleCrewGrant(player: Player, words: { string })
 	end
 end
 
+local function handleMoneyAdjust(player: Player, words: { string })
+	local amountText = joinWords(words, 2, #words):gsub(",", "")
+	local amount = tonumber(amountText)
+	if typeof(amount) ~= "number" or amount ~= amount or amount == 0 then
+		sendSystemMessage(player, "Usage: /money <signed amount>")
+		return
+	end
+
+	adjustDoubloons(player, amount)
+end
+
+local function handleSpawnCommand(player: Player, words: { string })
+	local spawnTarget = normalizeText(words[2])
+	if spawnTarget == "" then
+		sendSystemMessage(player, "Usage: /spawn <chest|crew>")
+		return
+	end
+
+	if spawnTarget == "chest" then
+		GrandLineRushChestService.GrantChest(player, "Wooden", 1)
+		return
+	end
+
+	if spawnTarget == "crew" then
+		local crewName = CrewCatalog.GetRandomNameForRarity(Economy.VerticalSlice.StarterCrew.Rarity or "Common")
+		CrewService.GrantCrew(player, crewName, Economy.VerticalSlice.StarterCrew.Rarity or "Common", "SpawnCommand")
+	end
+end
+
 local function onCommandMessage(player: Player, message: string)
 	if not canUseAdminCommands(player) then
 		return
@@ -215,9 +374,9 @@ local function onCommandMessage(player: Player, message: string)
 		return
 	end
 
-	local words = splitWords(string.lower(message))
-	local commandName = words[1]
-	if not commandName then
+	local words = splitWords(message)
+	local commandName = normalizeText(words[1])
+	if commandName == "" then
 		return
 	end
 
@@ -248,6 +407,16 @@ local function onCommandMessage(player: Player, message: string)
 
 	if commandName == "/crew" then
 		handleCrewGrant(player, words)
+		return
+	end
+
+	if commandName == "/money" then
+		handleMoneyAdjust(player, words)
+		return
+	end
+
+	if commandName == "/spawn" then
+		handleSpawnCommand(player, words)
 	end
 end
 
@@ -263,6 +432,7 @@ local function createChatCommand(alias: string)
 	local command = Instance.new("TextChatCommand")
 	command.Name = string.sub(alias, 2) .. "Command"
 	command.PrimaryAlias = alias
+	command.AutocompleteVisible = false
 	command.Parent = TextChatService
 
 	command.Triggered:Connect(function(textSource, unfilteredText)
@@ -271,7 +441,15 @@ local function createChatCommand(alias: string)
 			return
 		end
 
-		onCommandMessage(player, unfilteredText)
+		local normalizedText = tostring(unfilteredText or "")
+		if string.sub(normalizedText, 1, #alias) == alias then
+			onCommandMessage(player, normalizedText)
+			return
+		end
+
+		local suffix = tostring(unfilteredText or ""):match("^%s*(.-)%s*$") or ""
+		local syntheticCommand = suffix ~= "" and (alias .. " " .. suffix) or alias
+		onCommandMessage(player, syntheticCommand)
 	end)
 end
 
@@ -281,3 +459,5 @@ createChatCommand("/clearfruitinventory")
 createChatCommand("/unequipfruit")
 createChatCommand("/chest")
 createChatCommand("/crew")
+createChatCommand("/money")
+createChatCommand("/spawn")
