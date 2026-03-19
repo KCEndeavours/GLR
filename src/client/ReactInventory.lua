@@ -178,6 +178,7 @@ function ReactInventory.Start()
 	local rootContainer = Instance.new("Folder")
 	rootContainer.Name = "ReactInventoryRoot"
 	local root = ReactRoblox.createRoot(rootContainer)
+	local shopHostRef = React.createRef()
 
 	local cleanupConnections = {}
 	local inventory = {}
@@ -791,6 +792,26 @@ function ReactInventory.Start()
 			},
 		}
 
+		local function isPointerInsideShopHost()
+			local host = shopHostRef.current
+			if not host then
+				return false
+			end
+
+			local mousePosition = UserInputService:GetMouseLocation()
+			local absolutePosition = host.AbsolutePosition
+			local absoluteSize = host.AbsoluteSize
+			local minX = absolutePosition.X
+			local minY = absolutePosition.Y
+			local maxX = minX + absoluteSize.X
+			local maxY = minY + absoluteSize.Y
+
+			return mousePosition.X >= minX
+				and mousePosition.X <= maxX
+				and mousePosition.Y >= minY
+				and mousePosition.Y <= maxY
+		end
+
 		root:render(ReactRoblox.createPortal(e(React.Fragment, nil,
 			e(App, {
 				isOpen = isOpen,
@@ -858,7 +879,7 @@ function ReactInventory.Start()
 				DisplayOrder = 25,
 				IgnoreGuiInset = true,
 				ResetOnSpawn = false,
-				ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+				ZIndexBehavior = Enum.ZIndexBehavior.Global,
 			}, {
 				Backdrop = e("TextButton", {
 					AutoButtonColor = false,
@@ -868,8 +889,12 @@ function ReactInventory.Start()
 					Modal = true,
 					Size = UDim2.fromScale(1, 1),
 					Text = "",
-					ZIndex = 80,
+					ZIndex = 1,
 					[React.Event.Activated] = function()
+						if isPointerInsideShopHost() then
+							return
+						end
+
 						isShopOpen = false
 						render()
 					end,
@@ -878,6 +903,7 @@ function ReactInventory.Start()
 					AnchorPoint = Vector2.new(0.5, 0.5),
 					BackgroundTransparency = 1,
 					Position = UDim2.fromScale(0.5, 0.5),
+					ref = shopHostRef,
 					Size = UDim2.fromScale(0.9, 0.84),
 					ZIndex = 120,
 				}, {
