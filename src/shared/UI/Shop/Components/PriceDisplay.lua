@@ -179,7 +179,7 @@ local function PriceDisplay(props)
 						Image = Theme.Assets.RobuxIcon,
 						ImageColor3 = buttonTextColor,
 						LayoutOrder = 1,
-						Size = UDim2.fromOffset(props.compact and 12 or 14, props.compact and 12 or 14),
+						Size = UDim2.fromOffset(props.compact and 14 or 16, props.compact and 14 or 16),
 						ZIndex = props.zIndex and (props.zIndex + 2) or nil,
 					}) or nil,
 					Label = e("TextLabel", {
@@ -190,7 +190,7 @@ local function PriceDisplay(props)
 						Size = UDim2.fromScale(0, 1),
 						Text = purchaseText,
 						TextColor3 = buttonTextColor,
-						TextSize = props.compact and 12 or 14,
+						TextSize = props.compact and 14 or 16,
 						TextXAlignment = Enum.TextXAlignment.Center,
 						ZIndex = props.zIndex and (props.zIndex + 2) or nil,
 					}),

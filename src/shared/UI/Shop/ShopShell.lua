@@ -93,7 +93,7 @@ local function sectionBanner(props)
 			Size = UDim2.fromOffset(420, 32),
 			Text = props.title,
 			TextColor3 = Theme.Palette.Text,
-			TextSize = 30,
+			TextSize = 34,
 			TextStrokeTransparency = 1,
 			TextXAlignment = Enum.TextXAlignment.Center,
 		}),
@@ -137,7 +137,7 @@ local function ShopShell(props)
 	local wideHero = contentWidth >= 1160
 	local introWide = contentWidth >= 1180
 	local introHeight = introWide and 170 or 254
-	local headerHeight = 128
+	local headerHeight = 138
 	local noticeHeight = props.noticeText and 48 or 0
 	local navHeight = 66
 	local navTop = headerHeight + noticeHeight + 10
@@ -244,7 +244,7 @@ local function ShopShell(props)
 				Size = UDim2.new(1, 0, 0, 14),
 				Text = props.catalog.heroEyebrow,
 				TextColor3 = Theme.Palette.Cyan,
-				TextSize = 12,
+				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Left,
 			}),
 			Headline = e("TextLabel", {
@@ -254,7 +254,7 @@ local function ShopShell(props)
 				Size = UDim2.new(introWide and 0.62 or 1, introWide and -18 or 0, 0, introWide and 56 or 78),
 				Text = props.catalog.heroHeadline,
 				TextColor3 = Theme.Palette.Text,
-				TextSize = introWide and 40 or 36,
+				TextSize = introWide and 44 or 40,
 				TextStrokeTransparency = 1,
 				TextWrapped = true,
 				TextXAlignment = Enum.TextXAlignment.Left,
@@ -267,7 +267,7 @@ local function ShopShell(props)
 				Size = UDim2.new(introWide and 0.62 or 1, introWide and -18 or 0, 0, introWide and 46 or 58),
 				Text = props.catalog.heroCopy,
 				TextColor3 = Theme.Palette.Muted,
-				TextSize = 14,
+				TextSize = 16,
 				TextWrapped = true,
 				TextXAlignment = Enum.TextXAlignment.Left,
 				TextYAlignment = Enum.TextYAlignment.Top,
@@ -394,17 +394,17 @@ local function ShopShell(props)
 				Size = UDim2.fromOffset(titleBubbleWidth, 14),
 				Text = "ROBLOX SHOP",
 				TextColor3 = Theme.Palette.Cyan,
-				TextSize = 11,
+				TextSize = 13,
 				TextXAlignment = Enum.TextXAlignment.Left,
 			}),
 			ShopTitle = e("TextLabel", {
 				BackgroundTransparency = 1,
 				Font = Theme.Fonts.Display,
 				Position = UDim2.fromOffset(0, 16),
-				Size = UDim2.fromOffset(titleBubbleWidth, 46),
+				Size = UDim2.fromOffset(titleBubbleWidth, 54),
 				Text = props.catalog.title,
 				TextColor3 = Color3.fromRGB(217, 255, 131),
-				TextSize = 39,
+				TextSize = 46,
 				TextStrokeTransparency = 1,
 				TextWrapped = true,
 				TextXAlignment = Enum.TextXAlignment.Left,
@@ -415,10 +415,10 @@ local function ShopShell(props)
 				BackgroundTransparency = 1,
 				Font = Theme.Fonts.Body,
 				Position = UDim2.new(1, -156, 0, 14),
-				Size = UDim2.fromOffset(subtitleWidth, 40),
+				Size = UDim2.fromOffset(subtitleWidth, 52),
 				Text = props.catalog.subtitle,
 				TextColor3 = Theme.Palette.Muted,
-				TextSize = 13,
+				TextSize = 15,
 				TextWrapped = true,
 				TextXAlignment = Enum.TextXAlignment.Right,
 				TextYAlignment = Enum.TextYAlignment.Top,
@@ -467,7 +467,7 @@ local function ShopShell(props)
 				Size = UDim2.new(1, -28, 1, 0),
 				Text = props.noticeText,
 				TextColor3 = Theme.Palette.Text,
-				TextSize = 12,
+				TextSize = 13,
 				TextWrapped = true,
 				TextXAlignment = Enum.TextXAlignment.Left,
 			}),

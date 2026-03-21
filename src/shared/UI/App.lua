@@ -1142,7 +1142,7 @@ local function captainsLogRow(props)
 			Font = Enum.Font.Cartoon,
 			Position = UDim2.new(1, -18, 33 / 88, 0),
 			Size = UDim2.fromOffset(180, 30),
-			Text = string.format("%s / hr", formatNumber(entry.incomePerTick or 0)),
+			Text = string.format("%s D / tick", formatNumber(entry.incomePerTick or 0)),
 			TextColor3 = PALETTE.Cream,
 			TextSize = 24,
 			TextStrokeTransparency = 0.58,
@@ -1337,7 +1337,7 @@ local function App(props)
 
 		local modeTabs = {
 			{ key = "Inventory", label = "Inventory", fillColor3 = PALETTE.Sea },
-			{ key = "CaptainLog", label = "Crew Roster", fillColor3 = PALETTE.Orange },
+			{ key = "CaptainLog", label = "Captain's Log", fillColor3 = PALETTE.Orange },
 		}
 
 		for index, mode in ipairs(modeTabs) do
@@ -1598,7 +1598,7 @@ local function App(props)
 						Font = Enum.Font.Cartoon,
 						Position = UDim2.fromOffset(18, 22),
 						Size = UDim2.new(1, -320, 0, 30),
-						Text = showingCaptainLog and "Crew Roster" or (props.activeCategoryLabel or "Inventory"),
+						Text = showingCaptainLog and "Captain's Log" or (props.activeCategoryLabel or "Inventory"),
 						TextColor3 = PALETTE.Cream,
 						TextSize = 34,
 						TextStrokeTransparency = 0.58,
@@ -1613,7 +1613,7 @@ local function App(props)
 						Size = UDim2.new(1, -320, 0, 18),
 						Text = showingCaptainLog
 							and string.format(
-								"%d of %d crewmates visible in the roster",
+								"%d of %d crewmates visible in the log",
 								(props.captainLog and props.captainLog.filteredCount) or 0,
 								(props.captainLog and props.captainLog.totalCount) or 0
 							)
@@ -1694,7 +1694,7 @@ local function App(props)
 								Font = Enum.Font.GothamBold,
 								Position = UDim2.fromOffset(16, 10),
 								Size = UDim2.new(0.5, 0, 0, 14),
-								Text = "Ready to Collect",
+								Text = "Income Output",
 								TextColor3 = PALETTE.Muted,
 								TextSize = 11,
 								TextXAlignment = Enum.TextXAlignment.Left,
@@ -1772,7 +1772,7 @@ local function App(props)
 							Text = showingCaptainLog
 									and (((props.captainLog and props.captainLog.totalCount) or 0) > 0
 										and "No crewmates match that search."
-										or "No crewmates are in the roster yet.")
+										or "No crewmates are in the log yet.")
 								or ((props.totalCount or 0) > 0 and "No inventory items match that search." or "Nothing in this hold yet."),
 							TextColor3 = Color3.fromRGB(191, 198, 212),
 							TextSize = 24,

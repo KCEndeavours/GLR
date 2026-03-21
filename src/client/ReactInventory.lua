@@ -149,6 +149,7 @@ function ReactInventory.Start()
 	local playerGui = player:WaitForChild("PlayerGui")
 	local inventoryRoot = player:WaitForChild("Inventory")
 	local hotbarRoot = player:WaitForChild(HOTBAR_FOLDER_NAME)
+	local captainLogRoot = player:FindFirstChild("CaptainLog")
 
 	local packages = ReplicatedStorage:WaitForChild("Packages")
 	local modules = ReplicatedStorage:WaitForChild("Modules")
@@ -182,6 +183,7 @@ function ReactInventory.Start()
 
 	local cleanupConnections = {}
 	local inventory = {}
+	local captainLog = {}
 	local hotbar = {}
 	local destroyed = false
 	local renderQueued = false
@@ -424,6 +426,31 @@ function ReactInventory.Start()
 		return snapshot
 	end
 
+	local function readCaptainLogMirror()
+		local snapshot = {}
+		if not captainLogRoot or not captainLogRoot:IsA("Folder") then
+			return snapshot
+		end
+
+		for _, itemFolder in ipairs(captainLogRoot:GetChildren()) do
+			if itemFolder:IsA("Folder") then
+				snapshot[itemFolder.Name] = {
+					ItemId = itemFolder.Name,
+					DisplayName = getValue(itemFolder, CREW_VALUE_NAMES.DisplayName, "StringValue") or itemFolder.Name,
+					Rarity = getValue(itemFolder, CREW_VALUE_NAMES.Rarity, "StringValue") or "Common",
+					Level = getValue(itemFolder, CREW_VALUE_NAMES.Level, "NumberValue") or 1,
+					CurrentXP = getValue(itemFolder, CREW_VALUE_NAMES.CurrentXP, "NumberValue") or 0,
+					NextLevelXP = getValue(itemFolder, CREW_VALUE_NAMES.NextLevelXP, "NumberValue") or 0,
+					ShipIncomePerHour = getValue(itemFolder, CREW_VALUE_NAMES.ShipIncomePerHour, "NumberValue")
+						or getValue(itemFolder, "IncomePerTick", "NumberValue")
+						or 0,
+				}
+			end
+		end
+
+		return snapshot
+	end
+
 	local function readHotbarMirror()
 		local snapshot = {}
 		for slotIndex = 1, HOTBAR_SLOT_COUNT do
@@ -576,7 +603,8 @@ function ReactInventory.Start()
 
 	local function buildCaptainLogData(queryText)
 		local entries = {}
-		for itemId, state in pairs(inventory.Crewmates or {}) do
+		local totalCollectable = 0
+		for itemId, state in pairs(captainLog or {}) do
 			local entry = buildCrewEntry(itemId, state)
 			entry.standName = string.format("Level %d", entry.level or 1)
 			entry.collectable = entry.currentXP or 0
@@ -584,23 +612,49 @@ function ReactInventory.Start()
 			if matchesQuery(entry, queryText) then
 				entries[#entries + 1] = entry
 			end
+			totalCollectable += entry.incomePerTick or 0
 		end
 
 		table.sort(entries, function(a, b)
+			local aRank = RARITY_ORDER[tostring(a.subtitle or "")] or 0
+			local bRank = RARITY_ORDER[tostring(b.subtitle or "")] or 0
+			if aRank ~= bRank then
+				return aRank > bRank
+			end
+
+			local aName = string.lower(tostring(a.displayName or ""))
+			local bName = string.lower(tostring(b.displayName or ""))
+			if aName ~= bName then
+				return aName < bName
+			end
+
 			local aLevel = tonumber(a.level) or 0
 			local bLevel = tonumber(b.level) or 0
-			if aLevel == bLevel then
-				return tostring(a.displayName) < tostring(b.displayName)
+			if aLevel ~= bLevel then
+				return aLevel > bLevel
 			end
-			return aLevel > bLevel
+
+			local aXP = tonumber(a.collectable) or 0
+			local bXP = tonumber(b.collectable) or 0
+			if aXP ~= bXP then
+				return aXP > bXP
+			end
+
+			local aIncome = tonumber(a.incomePerTick) or 0
+			local bIncome = tonumber(b.incomePerTick) or 0
+			if aIncome ~= bIncome then
+				return aIncome > bIncome
+			end
+
+			return tostring(a.key or a.displayName or "") < tostring(b.key or b.displayName or "")
 		end)
 
 		return {
 			entries = entries,
 			filteredCount = #entries,
-			totalCount = countEntries(inventory.Crewmates),
-			placedCount = countEntries(inventory.Crewmates),
-			totalCollectable = 0,
+			totalCount = countEntries(captainLog),
+			placedCount = countEntries(captainLog),
+			totalCollectable = totalCollectable,
 		}
 	end
 
@@ -645,8 +699,13 @@ function ReactInventory.Start()
 				end
 			end
 			table.sort(entries, function(a, b)
+				local aRank = RARITY_ORDER[tostring(a.subtitle or "")] or 0
+				local bRank = RARITY_ORDER[tostring(b.subtitle or "")] or 0
+				if aRank ~= bRank then
+					return aRank > bRank
+				end
 				if a.level == b.level then
-					return a.displayName < b.displayName
+					return string.lower(a.displayName) < string.lower(b.displayName)
 				end
 				return a.level > b.level
 			end)
@@ -769,7 +828,7 @@ function ReactInventory.Start()
 	local function render()
 		local trimmedQuery = trim(query)
 		local items = buildItems(trimmedQuery)
-		local captainLog = buildCaptainLogData(trimmedQuery)
+		local captainLogData = buildCaptainLogData(trimmedQuery)
 		local catalogView = buildCatalogViewModel()
 		local categories = {
 			{
@@ -820,7 +879,7 @@ function ReactInventory.Start()
 				activeCategoryLabel = CATEGORY_DEFS[activeCategory].label,
 				categories = categories,
 				items = items,
-				captainLog = captainLog,
+				captainLog = captainLogData,
 				hotbarSlots = buildHotbarSlots(),
 				summary = buildSummary(),
 				filteredCount = #items,
@@ -835,7 +894,7 @@ function ReactInventory.Start()
 					scaleType = Enum.ScaleType.Fit,
 				},
 				toggleLabel = "Inventory",
-				toggleKeyText = "F",
+				toggleKeyText = "B",
 				shopLayout = SHOP_LAYOUT,
 				shopIcon = {
 					image = SHOP_ICON_ID,
@@ -961,12 +1020,30 @@ function ReactInventory.Start()
 
 	local function refreshState()
 		inventory = readInventoryMirror()
+		captainLog = readCaptainLogMirror()
 		hotbar = readHotbarMirror()
 		if selectedHotbarSlot and hotbar[selectedHotbarSlot] == nil then
 			selectedHotbarSlot = nil
 		end
 		refreshHeldFruitVisual()
 		scheduleRender()
+	end
+
+	local function attachCaptainLogListeners(folder: Folder)
+		track(folder.DescendantAdded, function(descendant)
+			if descendant:IsA("ValueBase") then
+				track(descendant:GetPropertyChangedSignal("Value"), refreshState)
+			end
+			task.defer(refreshState)
+		end)
+		track(folder.DescendantRemoving, function()
+			task.defer(refreshState)
+		end)
+		for _, descendant in ipairs(folder:GetDescendants()) do
+			if descendant:IsA("ValueBase") then
+				track(descendant:GetPropertyChangedSignal("Value"), refreshState)
+			end
+		end
 	end
 
 	local function tryConsumeSelectedFruit()
@@ -985,7 +1062,7 @@ function ReactInventory.Start()
 			return
 		end
 
-		if input.KeyCode == Enum.KeyCode.F then
+		if input.KeyCode == Enum.KeyCode.B then
 			isOpen = not isOpen
 			scheduleRender()
 			return
@@ -1013,6 +1090,9 @@ function ReactInventory.Start()
 	track(inventoryRoot.DescendantRemoving, function()
 		task.defer(refreshState)
 	end)
+	if captainLogRoot and captainLogRoot:IsA("Folder") then
+		attachCaptainLogListeners(captainLogRoot)
+	end
 	track(hotbarRoot.DescendantAdded, function(descendant)
 		if descendant:IsA("ValueBase") then
 			track(descendant:GetPropertyChangedSignal("Value"), refreshState)
@@ -1036,6 +1116,10 @@ function ReactInventory.Start()
 
 	track(player.ChildAdded, function(child)
 		if child.Name == "leaderstats" then
+			task.defer(refreshState)
+		elseif child.Name == "CaptainLog" and child:IsA("Folder") then
+			captainLogRoot = child
+			attachCaptainLogListeners(child)
 			task.defer(refreshState)
 		end
 	end)

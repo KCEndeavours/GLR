@@ -110,7 +110,8 @@ local function rebuildBiomeSections()
 		local labelValue = biomeFolder:FindFirstChild("Label")
 		local minValue = biomeFolder:FindFirstChild("Min")
 		local maxValue = biomeFolder:FindFirstChild("Max")
-		local biomeIndex = indexValue and indexValue:IsA("IntValue") and indexValue.Value or extractNumericSuffix(biomeFolder.Name)
+		local biomeIndex = indexValue and indexValue:IsA("IntValue") and indexValue.Value
+			or extractNumericSuffix(biomeFolder.Name)
 		if minValue and minValue:IsA("Vector3Value") and maxValue and maxValue:IsA("Vector3Value") then
 			local minProjection = (minValue.Value - startPosition):Dot(pathAxis)
 			local maxProjection = (maxValue.Value - startPosition):Dot(pathAxis)
@@ -120,7 +121,10 @@ local function rebuildBiomeSections()
 				biomeSections[#biomeSections + 1] = {
 					label = if biomeIndex == 1
 						then "Impact Zone"
-						else (labelValue and labelValue:IsA("StringValue") and labelValue.Value or ("Biome " .. tostring(biomeIndex))),
+						else (
+							labelValue and labelValue:IsA("StringValue") and labelValue.Value
+							or ("Biome " .. tostring(biomeIndex))
+						),
 					index = biomeIndex,
 					projectionLength = sectionProjection,
 					isImpact = biomeIndex == 1,
@@ -209,6 +213,8 @@ end
 local function anchorInstance(instance)
 	if instance:IsA("BasePart") then
 		instance.Anchored = true
+		instance.CanCollide = false
+		instance.CanQuery = false
 		return
 	end
 
@@ -267,7 +273,7 @@ local function killLocalPlayer()
 		return
 	end
 
-	if ProtectionRuntime.IsProtected(LocalPlayer, rootPart.Position, "WaveKill") then
+	if ProtectionRuntime.TryConsume(LocalPlayer, rootPart.Position, "WaveKill") then
 		return
 	end
 
@@ -277,6 +283,8 @@ end
 local function hookKillOnTouch(instance)
 	local function hookPart(part)
 		part.CanTouch = true
+		part.CanCollide = false
+		part.CanQuery = false
 		part.Touched:Connect(function(hit)
 			if isLocalRoot(hit) then
 				killLocalPlayer()
@@ -602,8 +610,8 @@ task.spawn(function()
 				debugLog("First wave spawned; waiting 0.5s before next loop")
 				task.wait(0.5)
 			else
-				debugLog("Waiting 6-7 seconds for the next wave")
-				task.wait(rng:NextInteger(6, 7))
+				debugLog("Waiting 20-23 seconds for the next wave")
+				task.wait(rng:NextInteger(20, 23))
 			end
 		else
 			task.wait(0.2)

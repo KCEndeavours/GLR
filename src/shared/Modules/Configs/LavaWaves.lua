@@ -1,6 +1,6 @@
 local LavaWaves = {
 	Wave = {
-		Speed = 60,
+		Speed = 25,
 		Chance = 100,
 		RotX = 0,
 		RotY = 0,

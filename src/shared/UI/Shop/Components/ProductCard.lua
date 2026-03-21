@@ -15,10 +15,10 @@ local function ProductCard(props)
 	local state = item.purchaseState or {}
 	local surface = Theme.getSurfaceTheme(item.themeKey)
 	local hovered, setHovered = React.useState(false)
-	local iconSize = 70
+	local iconSize = 76
 	local iconX = -6
 	local iconY = 54
-	local copyX = 106
+	local copyX = 114
 	local copyWidthOffset = copyX + 18
 	local footerHeight = 58
 
@@ -81,7 +81,7 @@ local function ProductCard(props)
 				Size = UDim2.fromOffset(136, 12),
 				Text = item.timerText,
 				TextColor3 = surface.accent,
-				TextSize = 10,
+				TextSize = 11,
 				TextXAlignment = Enum.TextXAlignment.Right,
 				ZIndex = props.zIndex and (props.zIndex + 2) or nil,
 			}) or nil,
@@ -100,7 +100,7 @@ local function ProductCard(props)
 			Size = UDim2.new(1, -copyWidthOffset, 0, 40),
 			Text = item.title,
 			TextColor3 = Theme.Palette.Text,
-			TextSize = 24,
+			TextSize = 28,
 			TextStrokeTransparency = 1,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
@@ -114,7 +114,7 @@ local function ProductCard(props)
 			Size = UDim2.new(1, -copyWidthOffset, 0, 64),
 			Text = item.description,
 			TextColor3 = Theme.Palette.Muted,
-			TextSize = 13,
+			TextSize = 15,
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextYAlignment = Enum.TextYAlignment.Top,

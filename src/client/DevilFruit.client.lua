@@ -1229,12 +1229,72 @@ local function isLocalPlayerInsidePhoenixShield(position)
 	return false
 end
 
-ProtectionRuntime.Register("PhoenixProtection", function(targetPlayer, position)
+local function getProtectingPhoenixShieldOwner(position)
+	local checkPosition = position
+	if typeof(checkPosition) ~= "Vector3" then
+		local rootPart = getRootPart()
+		checkPosition = rootPart and rootPart.Position or nil
+	end
+	if not checkPosition then
+		return nil
+	end
+
+	local now = os.clock()
+	for shieldOwner, shield in pairs(activePhoenixShields) do
+		if now >= shield.EndTime then
+			activePhoenixShields[shieldOwner] = nil
+		else
+			local ownerRootPart = getPlayerRootPart(shieldOwner)
+			if
+				ownerRootPart
+				and getPlanarDistance(ownerRootPart.Position, checkPosition)
+					<= (shield.Radius + PHOENIX_SHIELD_PADDING)
+			then
+				return shieldOwner
+			end
+		end
+	end
+
+	return nil
+end
+
+local function consumePhoenixShieldAt(position)
+	local shieldOwner = getProtectingPhoenixShieldOwner(position)
+	if not shieldOwner then
+		return false
+	end
+
+	local shield = activePhoenixShields[shieldOwner]
+	if not shield then
+		return false
+	end
+
+	shield.EndTime = math.min(shield.EndTime, os.clock() - 0.01)
+	return true
+end
+
+ProtectionRuntime.Register("PhoenixProtection", function(targetPlayer, position, context, options)
 	if targetPlayer ~= player then
 		return false
 	end
 
-	return isLocalPlayerInsidePhoenixShield(position)
+	local isProtected = isLocalPlayerInsidePhoenixShield(position)
+	if not isProtected then
+		return false
+	end
+
+	if context ~= "WaveKill" then
+		return true
+	end
+
+	return {
+		Protected = true,
+		Consume = function()
+			if options and options.Consume then
+				consumePhoenixShieldAt(position)
+			end
+		end,
+	}
 end)
 
 local function buildLocalHazardOverlapParams()
